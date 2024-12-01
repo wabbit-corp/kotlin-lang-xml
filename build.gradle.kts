@@ -32,8 +32,8 @@ publishing {
 }
 
 dependencies {
-    implementation(project(":kotlin-data"))
-    implementation(project(":kotlin-parsing-charinput"))
+    implementation("com.github.wabbit-corp:kotlin-data:1.0.0")
+    implementation("com.github.wabbit-corp:kotlin-parsing-charinput:1.0.0")
 
     testImplementation(kotlin("test"))
 

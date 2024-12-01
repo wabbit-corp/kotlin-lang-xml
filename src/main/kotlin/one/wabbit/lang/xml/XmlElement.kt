@@ -267,6 +267,11 @@ data class XmlDocument<Span>(val children: List<XmlElement<Span>>) {
     }
 
     companion object {
+        fun <Span : TextSpan> parse(input: CharInput<Span>, spanLike: SpanLike<Span>): XmlDocument<Span> {
+            val scanner = XmlScanner(input)
+            return parseXmlDocument(scanner, spanLike)
+        }
+
         fun parseWithTextAndPosSpans(text: String): XmlDocument<TextAndPosSpan> {
             val input = CharInput.withTextAndPosSpans(text)
             val scanner = XmlScanner(input)
