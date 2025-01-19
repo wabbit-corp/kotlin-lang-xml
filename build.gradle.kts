@@ -35,9 +35,9 @@ dependencies {
 
     testImplementation(kotlin("test"))
 
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.0")
 
-    testImplementation("io.github.java-diff-utils:java-diff-utils:4.12")
+    testImplementation("io.github.java-diff-utils:java-diff-utils:4.15")
 }
 
 java {
