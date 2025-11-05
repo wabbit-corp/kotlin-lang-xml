@@ -2,7 +2,7 @@ package one.wabbit.lang.xml
 
 import one.wabbit.data.iteratorOf
 import one.wabbit.parsing.Pos
-import one.wabbit.parsing.SpanOut
+import one.wabbit.parsing.SpanAccess
 import one.wabbit.parsing.Spanned
 import kotlinx.serialization.Serializable
 import one.wabbit.lang.xml.parsing.SpannedWithSpaces
@@ -50,42 +50,42 @@ enum class CloseType {
 @Serializable sealed class XmlToken<out Span> {
     abstract fun spanIterator(): Iterator<Span>
 
-    abstract fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>)
+    abstract fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>)
 
-    fun rawXML(spanOut: SpanOut<Span>): String {
+    fun rawXML(spanAccess: SpanAccess<Span>): String {
         val result = StringBuilder()
-        printRawXML(result, spanOut)
+        printRawXML(result, spanAccess)
         return result.toString()
     }
 
     @Serializable data class EOF<out Span>(val pos: Pos) : XmlToken<Span>() {
         override fun spanIterator(): Iterator<Span> = iteratorOf()
-        override fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) { } // Do nothing
+        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) { } // Do nothing
     }
     @Serializable data class Comment<out Span>(val span: Spanned<Span, String>) : XmlToken<Span>() {
         override fun spanIterator(): Iterator<Span> = iteratorOf(span.span)
-        override fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) {
+        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
             // FIXME: we don't need Spanned here.
-            result.append(spanOut.raw(span.span))
+            result.append(spanAccess.raw(span.span))
         }
     }
 
     @Serializable data class Text<out Span>(val text: Spanned<Span, String>) : XmlToken<Span>() {
         override fun spanIterator(): Iterator<Span> = iteratorOf(text.span)
-        override fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) {
-            result.append(spanOut.raw(text.span))
+        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
+            result.append(spanAccess.raw(text.span))
         }
     }
     @Serializable data class CDATA<out Span>(val text: Spanned<Span, String>) : XmlToken<Span>() {
         override fun spanIterator(): Iterator<Span> = iteratorOf(text.span)
-        override fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) {
-            result.append(spanOut.raw(text.span))
+        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
+            result.append(spanAccess.raw(text.span))
         }
     }
     @Serializable data class EntityRef<out Span>(val name: Spanned<Span, String>) : XmlToken<Span>() {
         override fun spanIterator(): Iterator<Span> = iteratorOf(name.span)
-        override fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) {
-            result.append(spanOut.raw(name.span))
+        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
+            result.append(spanAccess.raw(name.span))
         }
 
         val defaultResolvedEntity: String get() {
@@ -131,19 +131,19 @@ enum class CloseType {
             yield(close.span)
         }
 
-        override fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) {
-            result.append(spanOut.raw(open.span))
-            result.append(spanOut.raw(name.span))
-            result.append(spanOut.raw(name.spaces))
+        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
+            result.append(spanAccess.raw(open.span))
+            result.append(spanAccess.raw(name.span))
+            result.append(spanAccess.raw(name.spaces))
             for (attr in attrs) {
-                result.append(spanOut.raw(attr.name.span))
-                result.append(spanOut.raw(attr.name.spaces))
-                result.append(spanOut.raw(attr.eq.span))
-                result.append(spanOut.raw(attr.eq.spaces))
-                result.append(spanOut.raw(attr.value.span))
-                result.append(spanOut.raw(attr.value.spaces))
+                result.append(spanAccess.raw(attr.name.span))
+                result.append(spanAccess.raw(attr.name.spaces))
+                result.append(spanAccess.raw(attr.eq.span))
+                result.append(spanAccess.raw(attr.eq.spaces))
+                result.append(spanAccess.raw(attr.value.span))
+                result.append(spanAccess.raw(attr.value.spaces))
             }
-            result.append(spanOut.raw(close.span))
+            result.append(spanAccess.raw(close.span))
         }
     }
 
@@ -170,19 +170,19 @@ enum class CloseType {
             yield(close.span)
         }
 
-        override fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) {
-            result.append(spanOut.raw(open.span))
-            result.append(spanOut.raw(name.span))
-            result.append(spanOut.raw(name.spaces))
+        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
+            result.append(spanAccess.raw(open.span))
+            result.append(spanAccess.raw(name.span))
+            result.append(spanAccess.raw(name.spaces))
             for (attr in attrs) {
-                result.append(spanOut.raw(attr.name.span))
-                result.append(spanOut.raw(attr.name.spaces))
-                result.append(spanOut.raw(attr.eq.span))
-                result.append(spanOut.raw(attr.eq.spaces))
-                result.append(spanOut.raw(attr.value.span))
-                result.append(spanOut.raw(attr.value.spaces))
+                result.append(spanAccess.raw(attr.name.span))
+                result.append(spanAccess.raw(attr.name.spaces))
+                result.append(spanAccess.raw(attr.eq.span))
+                result.append(spanAccess.raw(attr.eq.spaces))
+                result.append(spanAccess.raw(attr.value.span))
+                result.append(spanAccess.raw(attr.value.spaces))
             }
-            result.append(spanOut.raw(close.span))
+            result.append(spanAccess.raw(close.span))
         }
     }
 
@@ -199,12 +199,12 @@ enum class CloseType {
             yield(close.span)
         }
 
-        override fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) {
-            result.append(spanOut.raw(open.span))
-            result.append(spanOut.raw(open.spaces))
-            result.append(spanOut.raw(name.span))
-            result.append(spanOut.raw(name.spaces))
-            result.append(spanOut.raw(close.span))
+        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
+            result.append(spanAccess.raw(open.span))
+            result.append(spanAccess.raw(open.spaces))
+            result.append(spanAccess.raw(name.span))
+            result.append(spanAccess.raw(name.spaces))
+            result.append(spanAccess.raw(close.span))
         }
     }
 }

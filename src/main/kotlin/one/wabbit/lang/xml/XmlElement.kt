@@ -9,22 +9,36 @@ import one.wabbit.lang.xml.parsing.XmlScanner
 import one.wabbit.lang.xml.parsing.parseXmlDocument
 
 @Serializable sealed interface XmlElement<Span> {
+    val firstSpan: Span
+    val lastSpan: Span
     fun spanIterator(): Iterator<Span>
     fun descendentIterator(): Iterator<XmlElement<Span>>
 
-    fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>)
+    fun isWhitespaceOnlyText(): Boolean {
+        when (this) {
+            is XmlElement.Text -> return token.text.value.isBlank()
+            is XmlElement.CDATA -> return token.text.value.isBlank()
+            is XmlElement.EntityRef -> return token.defaultResolvedEntity.isBlank()
+            is XmlElement.Comment -> return true
+            else -> return false
+        }
+    }
 
-    fun rawXML(spanOut: SpanOut<Span>): String {
+    fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>)
+
+    fun rawXML(spanAccess: SpanAccess<Span>): String {
         val result = StringBuilder()
-        printRawXML(result, spanOut)
+        printRawXML(result, spanAccess)
         return result.toString()
     }
 
     @Serializable data class PI<Span>(val token: XmlToken.PI<Span>) : XmlElement<Span> {
+        override val firstSpan: Span get() = token.open.span
+        override val lastSpan: Span get() = token.close.span
         override fun spanIterator(): Iterator<Span> = token.spanIterator()
         override fun descendentIterator(): Iterator<XmlElement<Span>> = iterator {  }
-        override fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) {
-            token.printRawXML(result, spanOut)
+        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
+            token.printRawXML(result, spanAccess)
         }
     }
 
@@ -34,6 +48,9 @@ import one.wabbit.lang.xml.parsing.parseXmlDocument
         val children: List<XmlElement<Span>>
     ) : XmlElement<Span>
     {
+        override val firstSpan: Span get() = openTag.open.span
+        override val lastSpan: Span get() = closeTag?.close?.span ?: openTag.close.span
+
         override fun spanIterator(): Iterator<Span> = iterator {
             yieldAll(openTag.spanIterator())
             for (c in children) {
@@ -44,12 +61,12 @@ import one.wabbit.lang.xml.parsing.parseXmlDocument
             }
         }
 
-        override fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) {
-            openTag.printRawXML(result, spanOut)
+        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
+            openTag.printRawXML(result, spanAccess)
             for (c in children) {
-                c.printRawXML(result, spanOut)
+                c.printRawXML(result, spanAccess)
             }
-            closeTag?.printRawXML(result, spanOut)
+            closeTag?.printRawXML(result, spanAccess)
         }
 
         override fun descendentIterator(): Iterator<XmlElement<Span>> = iterator {
@@ -73,11 +90,34 @@ import one.wabbit.lang.xml.parsing.parseXmlDocument
         fun childTags(): List<XmlElement.Tag<Span>> =
             children.filterIsInstance<XmlElement.Tag<Span>>()
 
-        fun innerRawText(spanOut: SpanOut<Span>): String {
+        fun innerRawText(spanAccess: SpanAccess<Span>): String {
             val result: StringBuilder = StringBuilder()
             for (c in children) {
                 for (s in c.spanIterator()) {
-                    result.append(spanOut.raw(s))
+                    result.append(spanAccess.raw(s))
+                }
+            }
+            return result.toString()
+        }
+
+        fun innerText(spanAccess: SpanAccess<Span>): String {
+            val result: StringBuilder = StringBuilder()
+            for (c in children) {
+                when (c) {
+                    is XmlElement.Text -> result.append(c.token.text.value)
+                    is XmlElement.CDATA -> result.append(c.token.text.value)
+                    is XmlElement.EntityRef -> result.append(c.defaultResolvedEntity)
+                    is XmlElement.Comment -> continue // comments are not included in inner text
+                    is XmlElement.PI -> continue // processing instructions are not included in inner text
+                    is XmlElement.UnopenedTag -> result.append(c.rawXML(spanAccess))
+                    is XmlElement.UnclosedTag -> result.append(c.rawXML(spanAccess))
+                    is XmlElement.Tag -> {
+                        result.append(c.openTag.rawXML(spanAccess))
+                        result.append(c.innerText(spanAccess))
+                        if (c.closeTag != null) {
+                            result.append(c.closeTag.rawXML(spanAccess))
+                        }
+                    }
                 }
             }
             return result.toString()
@@ -104,28 +144,37 @@ import one.wabbit.lang.xml.parsing.parseXmlDocument
     }
 
     @Serializable data class Text<Span>(val token: XmlToken.Text<Span>) : TextLike<Span> {
+        override val firstSpan: Span get() = token.text.span
+        override val lastSpan: Span get() = token.text.span
+
         override fun spanIterator(): Iterator<Span> = token.spanIterator()
         override fun descendentIterator(): Iterator<XmlElement<Span>> = iterator {  }
 
         override val text: String
             get() = token.text.value
 
-        override fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) {
-            token.printRawXML(result, spanOut)
+        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
+            token.printRawXML(result, spanAccess)
         }
     }
     @Serializable data class CDATA<Span>(val token: XmlToken.CDATA<Span>) : TextLike<Span> {
+        override val firstSpan: Span get() = token.text.span
+        override val lastSpan: Span get() = token.text.span
+
         override fun spanIterator(): Iterator<Span> = token.spanIterator()
         override fun descendentIterator(): Iterator<XmlElement<Span>> = iterator {  }
 
         override val text: String
             get() = token.text.value
 
-        override fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) {
-            token.printRawXML(result, spanOut)
+        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
+            token.printRawXML(result, spanAccess)
         }
     }
     @Serializable data class EntityRef<Span>(val token: XmlToken.EntityRef<Span>) : TextLike<Span> {
+        override val firstSpan: Span get() = token.name.span
+        override val lastSpan: Span get() = token.name.span
+
         override fun spanIterator(): Iterator<Span> = token.spanIterator()
         override fun descendentIterator(): Iterator<XmlElement<Span>> = iterator {  }
 
@@ -134,34 +183,43 @@ import one.wabbit.lang.xml.parsing.parseXmlDocument
         override val text: String
             get() = token.defaultResolvedEntity
 
-        override fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) {
-            token.printRawXML(result, spanOut)
+        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
+            token.printRawXML(result, spanAccess)
         }
     }
     @Serializable data class Comment<Span>(val token: XmlToken.Comment<Span>) : XmlElement<Span> {
+        override val firstSpan: Span get() = token.span.span
+        override val lastSpan: Span get() = token.span.span
+
         override fun spanIterator(): Iterator<Span> = token.spanIterator()
         override fun descendentIterator(): Iterator<XmlElement<Span>> = iterator {  }
 
-        override fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) {
-            token.printRawXML(result, spanOut)
+        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
+            token.printRawXML(result, spanAccess)
         }
     }
 
     @Serializable sealed interface InvalidTag<Span> : XmlElement<Span>
     @Serializable data class UnopenedTag<Span>(val token: XmlToken.ClosingTag<Span>) : InvalidTag<Span> {
+        override val firstSpan: Span get() = token.open.span
+        override val lastSpan: Span get() = token.close.span
+
         override fun spanIterator(): Iterator<Span> = token.spanIterator()
         override fun descendentIterator(): Iterator<XmlElement<Span>> = iterator {  }
 
-        override fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) {
-            token.printRawXML(result, spanOut)
+        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
+            token.printRawXML(result, spanAccess)
         }
     }
     @Serializable data class UnclosedTag<Span>(val token: XmlToken.OpeningTag<Span>) : InvalidTag<Span> {
+        override val firstSpan: Span get() = token.open.span
+        override val lastSpan: Span get() = token.close.span
+
         override fun spanIterator(): Iterator<Span> = token.spanIterator()
         override fun descendentIterator(): Iterator<XmlElement<Span>> = iterator {  }
 
-        override fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) {
-            token.printRawXML(result, spanOut)
+        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
+            token.printRawXML(result, spanAccess)
         }
     }
 
@@ -197,15 +255,15 @@ class MultipleRootTagsException(tagNames: List<String>) : Exception("Multiple ro
 class NoRootTagException : Exception("No root tag")
 
 data class XmlDocument<Span>(val children: List<XmlElement<Span>>) {
-    fun printRawXML(result: StringBuilder, spanOut: SpanOut<Span>) {
+    fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
         for (c in children) {
-            c.printRawXML(result, spanOut)
+            c.printRawXML(result, spanAccess)
         }
     }
 
-    fun rawXML(spanOut: SpanOut<Span>): String {
+    fun rawXML(spanAccess: SpanAccess<Span>): String {
         val result = StringBuilder()
-        printRawXML(result, spanOut)
+        printRawXML(result, spanAccess)
         return result.toString()
     }
 
@@ -291,4 +349,3 @@ data class XmlDocument<Span>(val children: List<XmlElement<Span>>) {
             parseWithTextOnlySpans(file.readText())
     }
 }
-

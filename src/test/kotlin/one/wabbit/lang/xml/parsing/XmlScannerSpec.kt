@@ -314,7 +314,7 @@ class XmlScannerSpec {
     @Test fun `newlines between attributes`() {
         val text = """
             <wozzle
-					   foo="a"                   
+					   foo="a"
 					   bar="b"
                        baz="2"
                        beh="L"/>
