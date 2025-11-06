@@ -1,53 +1,55 @@
 package one.wabbit.lang.xml
 
+import kotlinx.serialization.Serializable
 import one.wabbit.data.iteratorOf
+import one.wabbit.lang.xml.parsing.SpannedWithSpaces
 import one.wabbit.parsing.Pos
 import one.wabbit.parsing.SpanAccess
 import one.wabbit.parsing.Spanned
-import kotlinx.serialization.Serializable
-import one.wabbit.lang.xml.parsing.SpannedWithSpaces
 
 @Serializable
 sealed class XmlAttrValue {
-    fun decodeString(): kotlin.String = when (this) {
-        is XmlAttrValue.String ->
-            value.replace("&lt;", "<")
-                .replace("&gt;", ">")
-                .replace("&amp;", "&")
-        is XmlAttrValue.Integer -> "$value"
-        is XmlAttrValue.Real -> "$value"
-        is XmlAttrValue.Boolean -> "$value"
-    }
+    fun decodeString(): kotlin.String =
+        when (this) {
+            is XmlAttrValue.String ->
+                value.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+            is XmlAttrValue.Integer -> "$value"
+            is XmlAttrValue.Real -> "$value"
+            is XmlAttrValue.Boolean -> "$value"
+        }
 
-    fun asString(): kotlin.String = when (this) {
-        is XmlAttrValue.String -> "$value"
-        is XmlAttrValue.Integer -> "$value"
-        is XmlAttrValue.Real -> "$value"
-        is XmlAttrValue.Boolean -> "$value"
-    }
+    fun asString(): kotlin.String =
+        when (this) {
+            is XmlAttrValue.String -> "$value"
+            is XmlAttrValue.Integer -> "$value"
+            is XmlAttrValue.Real -> "$value"
+            is XmlAttrValue.Boolean -> "$value"
+        }
 
-    @Serializable
-    data class String(val value: kotlin.String) : XmlAttrValue()
-    @Serializable
-    data class Integer(val value: kotlin.String) : XmlAttrValue()
-    @Serializable
-    data class Real(val value: kotlin.String) : XmlAttrValue()
-    @Serializable
-    data class Boolean(val value: kotlin.Boolean) : XmlAttrValue()
+    @Serializable data class String(val value: kotlin.String) : XmlAttrValue()
+
+    @Serializable data class Integer(val value: kotlin.String) : XmlAttrValue()
+
+    @Serializable data class Real(val value: kotlin.String) : XmlAttrValue()
+
+    @Serializable data class Boolean(val value: kotlin.Boolean) : XmlAttrValue()
 }
 
 @Serializable
 data class XmlAttr<out Span>(
     val name: SpannedWithSpaces<Span, String>,
     val eq: SpannedWithSpaces<Span, Unit>,
-    val value: SpannedWithSpaces<Span, XmlAttrValue>)
+    val value: SpannedWithSpaces<Span, XmlAttrValue>,
+)
 
 @Serializable
 enum class CloseType {
-    SlashGreater, Greater
+    SlashGreater,
+    Greater,
 }
 
-@Serializable sealed class XmlToken<out Span> {
+@Serializable
+sealed class XmlToken<out Span> {
     abstract fun spanIterator(): Iterator<Span>
 
     abstract fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>)
@@ -58,63 +60,81 @@ enum class CloseType {
         return result.toString()
     }
 
-    @Serializable data class EOF<out Span>(val pos: Pos) : XmlToken<Span>() {
+    @Serializable
+    data class EOF<out Span>(val pos: Pos) : XmlToken<Span>() {
         override fun spanIterator(): Iterator<Span> = iteratorOf()
-        override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) { } // Do nothing
+
+        override fun printRawXML(
+            result: StringBuilder,
+            spanAccess: SpanAccess<Span>,
+        ) {} // Do nothing
     }
-    @Serializable data class Comment<out Span>(val span: Spanned<Span, String>) : XmlToken<Span>() {
+
+    @Serializable
+    data class Comment<out Span>(val span: Spanned<Span, String>) : XmlToken<Span>() {
         override fun spanIterator(): Iterator<Span> = iteratorOf(span.span)
+
         override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
             // FIXME: we don't need Spanned here.
             result.append(spanAccess.raw(span.span))
         }
     }
 
-    @Serializable data class Text<out Span>(val text: Spanned<Span, String>) : XmlToken<Span>() {
+    @Serializable
+    data class Text<out Span>(val text: Spanned<Span, String>) : XmlToken<Span>() {
         override fun spanIterator(): Iterator<Span> = iteratorOf(text.span)
+
         override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
             result.append(spanAccess.raw(text.span))
         }
     }
-    @Serializable data class CDATA<out Span>(val text: Spanned<Span, String>) : XmlToken<Span>() {
+
+    @Serializable
+    data class CDATA<out Span>(val text: Spanned<Span, String>) : XmlToken<Span>() {
         override fun spanIterator(): Iterator<Span> = iteratorOf(text.span)
+
         override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
             result.append(spanAccess.raw(text.span))
         }
     }
-    @Serializable data class EntityRef<out Span>(val name: Spanned<Span, String>) : XmlToken<Span>() {
+
+    @Serializable
+    data class EntityRef<out Span>(val name: Spanned<Span, String>) : XmlToken<Span>() {
         override fun spanIterator(): Iterator<Span> = iteratorOf(name.span)
+
         override fun printRawXML(result: StringBuilder, spanAccess: SpanAccess<Span>) {
             result.append(spanAccess.raw(name.span))
         }
 
-        val defaultResolvedEntity: String get() {
-            when {
-                name.value == "amp" -> return "&"
-                name.value == "lt" -> return "<"
-                name.value == "gt" -> return ">"
-                name.value == "apos" -> return "'"
-                name.value == "quot" -> return "\""
-                name.value.startsWith("#") -> {
-                    val id = name.value.substring(1)
-                    if (id.startsWith("x")) {
-                        val value = id.substring(1).toInt(16)
-                        return value.toChar().toString()
-                    } else {
-                        val value = id.toInt()
-                        return value.toChar().toString()
+        val defaultResolvedEntity: String
+            get() {
+                when {
+                    name.value == "amp" -> return "&"
+                    name.value == "lt" -> return "<"
+                    name.value == "gt" -> return ">"
+                    name.value == "apos" -> return "'"
+                    name.value == "quot" -> return "\""
+                    name.value.startsWith("#") -> {
+                        val id = name.value.substring(1)
+                        if (id.startsWith("x")) {
+                            val value = id.substring(1).toInt(16)
+                            return value.toChar().toString()
+                        } else {
+                            val value = id.toInt()
+                            return value.toChar().toString()
+                        }
                     }
+                    else -> return "&$name;"
                 }
-                else -> return "&$name;"
             }
-        }
     }
 
-    @Serializable data class PI<out Span>(
+    @Serializable
+    data class PI<out Span>(
         val open: Spanned<Span, Unit>,
         val name: SpannedWithSpaces<Span, String>,
         val attrs: List<XmlAttr<Span>>,
-        val close: Spanned<Span, Unit>
+        val close: Spanned<Span, Unit>,
     ) : XmlToken<Span>() {
         override fun spanIterator(): Iterator<Span> = iterator {
             yield(open.span)
@@ -147,13 +167,15 @@ enum class CloseType {
         }
     }
 
-    @Serializable data class OpeningTag<Span>(
+    @Serializable
+    data class OpeningTag<Span>(
         val open: Spanned<Span, Unit>,
         val name: SpannedWithSpaces<Span, String>,
         val attrs: List<XmlAttr<Span>>,
-        val close: Spanned<Span, CloseType>
+        val close: Spanned<Span, CloseType>,
     ) : XmlToken<Span>() {
-        val closing: Boolean get() = close.value == CloseType.SlashGreater
+        val closing: Boolean
+            get() = close.value == CloseType.SlashGreater
 
         override fun spanIterator(): Iterator<Span> = iterator {
             yield(open.span)
@@ -186,10 +208,11 @@ enum class CloseType {
         }
     }
 
-    @Serializable data class ClosingTag<Span>(
+    @Serializable
+    data class ClosingTag<Span>(
         val open: SpannedWithSpaces<Span, Unit>,
         val name: SpannedWithSpaces<Span, String>,
-        val close: Spanned<Span, Unit>
+        val close: Spanned<Span, Unit>,
     ) : XmlToken<Span>() {
         override fun spanIterator(): Iterator<Span> = iterator {
             yield(open.span)

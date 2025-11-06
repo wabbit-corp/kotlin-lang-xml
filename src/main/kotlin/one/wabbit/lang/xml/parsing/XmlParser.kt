@@ -3,7 +3,12 @@ package one.wabbit.lang.xml.parsing
 import one.wabbit.lang.xml.XmlDocument
 import one.wabbit.lang.xml.XmlElement
 import one.wabbit.lang.xml.XmlToken
-import one.wabbit.parsing.*
+import one.wabbit.parsing.CharInput
+import one.wabbit.parsing.SpanLike
+import one.wabbit.parsing.Spanned
+import one.wabbit.parsing.TextAndPosSpan
+import one.wabbit.parsing.TextOnlySpan
+import one.wabbit.parsing.TextSpan
 
 private class StackElement<Span>(val openToken: XmlToken.OpeningTag<Span>?) {
     val children = mutableListOf<XmlElement<Span>>()
@@ -18,7 +23,7 @@ private class StackElement<Span>(val openToken: XmlToken.OpeningTag<Span>?) {
                         XmlToken.Text(
                             Spanned(
                                 spanLike.combine(last.token.text.span, element.token.text.span),
-                                last.token.text.value + element.token.text.value
+                                last.token.text.value + element.token.text.value,
                             )
                         )
                     )
@@ -38,12 +43,13 @@ private class StackElement<Span>(val openToken: XmlToken.OpeningTag<Span>?) {
         return "<${openToken?.name?.value}>$children..."
     }
 
-    override fun toString(): String {
-        return "StackElement(openToken=$openToken, children=$children)"
-    }
+    override fun toString(): String = "StackElement(openToken=$openToken, children=$children)"
 }
 
-internal fun <Span : TextSpan> parseXmlDocument(scanner: XmlScanner<Span>, spanLike: SpanLike<Span>): XmlDocument<Span> {
+internal fun <Span : TextSpan> parseXmlDocument(
+    scanner: XmlScanner<Span>,
+    spanLike: SpanLike<Span>,
+): XmlDocument<Span> {
     val stack = mutableListOf<StackElement<Span>>()
     stack.add(StackElement(null))
 
@@ -73,10 +79,7 @@ internal fun <Span : TextSpan> parseXmlDocument(scanner: XmlScanner<Span>, spanL
 
             is XmlToken.OpeningTag<Span> -> {
                 if (token.closing) {
-                    stack.last().add(
-                        XmlElement.Tag(token, null, emptyList()),
-                        spanLike
-                    )
+                    stack.last().add(XmlElement.Tag(token, null, emptyList()), spanLike)
                     scanner.advance()
                 } else {
                     stack.add(StackElement(token))
@@ -100,23 +103,24 @@ internal fun <Span : TextSpan> parseXmlDocument(scanner: XmlScanner<Span>, spanL
                 // <a> ... </a>
                 if (lastTag.openToken.name.value == token.name.value) {
                     stack.removeAt(stack.lastIndex)
-                    stack.last().add(
-                        XmlElement.Tag(lastTag.openToken, closeToken, lastTag.children),
-                        spanLike
-                    )
+                    stack
+                        .last()
+                        .add(
+                            XmlElement.Tag(lastTag.openToken, closeToken, lastTag.children),
+                            spanLike,
+                        )
                     scanner.advance()
                     continue
                 }
 
                 // Difficult case #3: the last tag is not closed.
                 // <a> ... </b>
-                // What if there is a tag above the last one that is not closed and has the same name?
+                // What if there is a tag above the last one that is not closed and has the same
+                // name?
                 // <root> ... <a> ... <b> </a>
 
                 // Find the last tag with the same name.
-                val index = stack.indexOfLast {
-                    it.openToken?.name?.value == closeToken.name.value
-                }
+                val index = stack.indexOfLast { it.openToken?.name?.value == closeToken.name.value }
 
                 // If there is no such tag, just close the last tag.
                 if (index == -1) {
@@ -127,20 +131,16 @@ internal fun <Span : TextSpan> parseXmlDocument(scanner: XmlScanner<Span>, spanL
                     while (stack.size - 1 > index) {
                         val tag = stack.last()
                         stack.removeLast()
-                        stack.last().add(
-                            XmlElement.UnclosedTag(tag.openToken!!),
-                            spanLike
-                        )
+                        stack.last().add(XmlElement.UnclosedTag(tag.openToken!!), spanLike)
                         stack.last().addAll(tag.children, spanLike)
                     }
 
                     // Close the last tag.
                     val tag = stack.last()
                     stack.removeLast()
-                    stack.last().add(
-                        XmlElement.Tag(tag.openToken!!, closeToken, tag.children),
-                        spanLike
-                    )
+                    stack
+                        .last()
+                        .add(XmlElement.Tag(tag.openToken!!, closeToken, tag.children), spanLike)
                     scanner.advance()
                 }
             }
@@ -149,10 +149,7 @@ internal fun <Span : TextSpan> parseXmlDocument(scanner: XmlScanner<Span>, spanL
                 while (stack.size > 1) {
                     val lastTag = stack.last()
                     stack.removeAt(stack.lastIndex)
-                    stack.last().add(
-                        XmlElement.UnclosedTag(lastTag.openToken!!),
-                        spanLike
-                    )
+                    stack.last().add(XmlElement.UnclosedTag(lastTag.openToken!!), spanLike)
                     stack.last().addAll(lastTag.children, spanLike)
                 }
                 return XmlDocument(stack[0].children)

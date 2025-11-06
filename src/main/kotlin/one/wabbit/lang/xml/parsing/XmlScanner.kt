@@ -1,5 +1,6 @@
 package one.wabbit.lang.xml.parsing
 
+import kotlinx.serialization.Serializable
 import one.wabbit.lang.xml.CloseType
 import one.wabbit.lang.xml.XmlAttr
 import one.wabbit.lang.xml.XmlAttrValue
@@ -7,29 +8,30 @@ import one.wabbit.lang.xml.XmlToken
 import one.wabbit.parsing.CharInput
 import one.wabbit.parsing.Spanned
 import one.wabbit.parsing.TextSpan
-import kotlinx.serialization.Serializable
 
-internal fun <Span, Value> Spanned<Span, Value>.withSpaces(spaces: Span): SpannedWithSpaces<Span, Value> =
-    SpannedWithSpaces(value, span, spaces)
+internal fun <Span, Value> Spanned<Span, Value>.withSpaces(
+    spaces: Span
+): SpannedWithSpaces<Span, Value> = SpannedWithSpaces(value, span, spaces)
 
 @Serializable
 data class SpannedWithSpaces<out Span, out Value>(
     val value: Value,
     val span: Span,
-    val spaces: Span)
-
+    val spaces: Span,
+)
 
 internal fun Char.isWhitespace(): Boolean =
     this == ' ' || this == '\t' || this == '\r' || this == '\n'
 
-internal fun Char.isHexDigit(): Boolean =
-    this in '0'..'9' || this in 'a'..'f' || this in 'A'..'F'
+internal fun Char.isHexDigit(): Boolean = this in '0'..'9' || this in 'a'..'f' || this in 'A'..'F'
 
-// NameStartChar ::= ":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D]
-//                 | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF]
+// NameStartChar ::= ":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] |
+// [#x370-#x37D]
+//                 | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] |
+// [#x3001-#xD7FF]
 //                 | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
-internal fun Int.isNameStartChar(): Boolean {
-    return when {
+internal fun Int.isNameStartChar(): Boolean =
+    when {
         this == ':'.code -> true
         this in 'A'.code..'Z'.code -> true
         this == '_'.code -> true
@@ -48,11 +50,10 @@ internal fun Int.isNameStartChar(): Boolean {
         this in 0x10000..0xEFFFF -> true
         else -> false
     }
-}
 
 // NameChar ::= NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
-internal fun Int.isNameChar(): Boolean {
-    return when {
+internal fun Int.isNameChar(): Boolean =
+    when {
         this.isNameStartChar() -> true
         this == '-'.code -> true
         this == '.'.code -> true
@@ -62,12 +63,9 @@ internal fun Int.isNameChar(): Boolean {
         this in 0x203F..0x2040 -> true
         else -> false
     }
-}
 
-
-internal fun <Span> CharInput<Span>.fail(message: String): Nothing {
-    throw Exception("Error at ${this}: $message")
-}
+internal fun <Span> CharInput<Span>.fail(message: String): Nothing =
+    throw Exception("Error at $this: $message")
 
 internal fun <Span> CharInput<Span>.expect(c: Char) {
     val ch = this.current
@@ -92,23 +90,22 @@ internal fun <Span : TextSpan> CharInput<Span>.expect(s: String) {
     }
 }
 
-internal fun <Span : TextSpan> CharInput<Span>.captureRaw(start: CharInput.Mark): Spanned<Span, String> {
+internal fun <Span : TextSpan> CharInput<Span>.captureRaw(
+    start: CharInput.Mark
+): Spanned<Span, String> {
     val span = capture(start)
     return Spanned(span, span.raw)
 }
 
 internal fun <Span> CharInput<Span>.readIntegerAsString(): String {
     // This is a violation of the contract of readInteger:
-    check(current.isDigit()) {
-        "Expected a digit, got '$current'"
-    }
+    check(current.isDigit()) { "Expected a digit, got '$current'" }
 
     val buffer = StringBuilder()
     while (true) {
         val char = current
         when {
-            char == CharInput.EOB ->
-                return buffer.toString()
+            char == CharInput.EOB -> return buffer.toString()
             char.isDigit() -> {
                 buffer.append(char)
                 advance()
@@ -120,15 +117,12 @@ internal fun <Span> CharInput<Span>.readIntegerAsString(): String {
 
 internal fun <Span> CharInput<Span>.readHexInteger(): String {
     // This is a violation of the contract of readHexInteger:
-    check(current.isHexDigit()) {
-        "Expected a hex digit, got '$current'"
-    }
+    check(current.isHexDigit()) { "Expected a hex digit, got '$current'" }
 
     val buffer = StringBuilder()
     while (true) {
         when {
-            current == CharInput.EOB ->
-                return buffer.toString()
+            current == CharInput.EOB -> return buffer.toString()
             current.isHexDigit() -> {
                 buffer.append(current)
                 advance()
@@ -154,14 +148,15 @@ internal fun <Span : TextSpan> CharInput<Span>.readIntegerOrReal(): Spanned<Span
 
             else -> {
                 // INCLUDES char == CharInput.EOB
-                return this.captureRaw(start)
-                    .map { XmlAttrValue.Integer(it) }
+                return this.captureRaw(start).map { XmlAttrValue.Integer(it) }
             }
         }
     }
 }
 
-internal fun <Span : TextSpan> CharInput<Span>.readReal(startMark: CharInput.Mark): Spanned<Span, String>? {
+internal fun <Span : TextSpan> CharInput<Span>.readReal(
+    startMark: CharInput.Mark
+): Spanned<Span, String>? {
     // Supports 1.0, 1.0e10, 1.0e-10, 1.0e+10
 
     while (true) {
@@ -187,7 +182,9 @@ internal fun <Span : TextSpan> CharInput<Span>.readReal(startMark: CharInput.Mar
     }
 }
 
-internal fun <Span : TextSpan> CharInput<Span>.readExponent(startMark: CharInput.Mark): Spanned<Span, String>? {
+internal fun <Span : TextSpan> CharInput<Span>.readExponent(
+    startMark: CharInput.Mark
+): Spanned<Span, String>? {
     // Supports 1.0e10, 1.0e-10, 1.0e+10
     val char = current
 
@@ -195,8 +192,9 @@ internal fun <Span : TextSpan> CharInput<Span>.readExponent(startMark: CharInput
         advance()
     }
 
-    if (!current.isDigit())
+    if (!current.isDigit()) {
         return null
+    }
 
     while (true) {
         when {
@@ -258,8 +256,7 @@ internal fun <Span> CharInput<Span>.readIdentifier(): Spanned<Span, String>? {
 
     while (true) {
         when {
-            current == CharInput.EOB ->
-                return Spanned(capture(start), buffer.toString())
+            current == CharInput.EOB -> return Spanned(capture(start), buffer.toString())
 
             current.code.isNameChar() -> {
                 buffer.append(current)
@@ -315,7 +312,9 @@ private fun <Span : TextSpan> CharInput<Span>.nextToken(): XmlToken<Span> {
 }
 
 // Assumes that the current character is '&'.
-private fun <Span : TextSpan> CharInput<Span>.scanEntityRef(tokenStart: CharInput.Mark): XmlToken<Span> {
+private fun <Span : TextSpan> CharInput<Span>.scanEntityRef(
+    tokenStart: CharInput.Mark
+): XmlToken<Span> {
     assert(current == '&')
     advance()
 
@@ -345,7 +344,9 @@ private fun <Span : TextSpan> CharInput<Span>.scanEntityRef(tokenStart: CharInpu
 }
 
 // Assumes that there is already a char in the span.
-private fun <Span : TextSpan> CharInput<Span>.scanText(tokenStart: CharInput.Mark): XmlToken.Text<Span> {
+private fun <Span : TextSpan> CharInput<Span>.scanText(
+    tokenStart: CharInput.Mark
+): XmlToken.Text<Span> {
     while (current != '<' && current != '&' && current != CharInput.EOB) {
         advance()
     }
@@ -354,7 +355,9 @@ private fun <Span : TextSpan> CharInput<Span>.scanText(tokenStart: CharInput.Mar
 }
 
 // Assumes that the span starts with '<![ and the current character is '['.
-private fun <Span : TextSpan> CharInput<Span>.scanCDATA(tokenStart: CharInput.Mark): XmlToken<Span> {
+private fun <Span : TextSpan> CharInput<Span>.scanCDATA(
+    tokenStart: CharInput.Mark
+): XmlToken<Span> {
     assert(current == '[')
 
     advance()
@@ -405,7 +408,9 @@ private fun <Span : TextSpan> CharInput<Span>.scanCDATA(tokenStart: CharInput.Ma
 }
 
 // Assumes that the span starts with '<!-' and the current character is '-'.
-private fun <Span : TextSpan> CharInput<Span>.scanComment(tokenStart: CharInput.Mark): XmlToken<Span> {
+private fun <Span : TextSpan> CharInput<Span>.scanComment(
+    tokenStart: CharInput.Mark
+): XmlToken<Span> {
     assert(current == '-')
 
     advance()
@@ -438,7 +443,9 @@ private fun <Span : TextSpan> CharInput<Span>.scanComment(tokenStart: CharInput.
 }
 
 // Assumes that the span starts with '</' and the current character is '/'.
-private fun <Span : TextSpan> CharInput<Span>.scanEndTag(tokenStart: CharInput.Mark): XmlToken<Span> {
+private fun <Span : TextSpan> CharInput<Span>.scanEndTag(
+    tokenStart: CharInput.Mark
+): XmlToken<Span> {
     val open = capture(tokenStart)
     assert(open.raw == "</")
     val openTail = readSpaces()
@@ -452,15 +459,22 @@ private fun <Span : TextSpan> CharInput<Span>.scanEndTag(tokenStart: CharInput.M
     return XmlToken.ClosingTag(
         SpannedWithSpaces(Unit, open, openTail),
         name.withSpaces(nameTail),
-        close
+        close,
     )
 }
 
-// Assumes that the span starts with '<X' or <?X and the current character is 'X' (any start symbol).
-private fun <Span : TextSpan> CharInput<Span>.scanTag(tokenStart: CharInput.Mark, special: Boolean): XmlToken<Span> {
+// Assumes that the span starts with '<X' or <?X and the current character is 'X' (any start
+// symbol).
+private fun <Span : TextSpan> CharInput<Span>.scanTag(
+    tokenStart: CharInput.Mark,
+    special: Boolean,
+): XmlToken<Span> {
     val open = capture(tokenStart)
-    if (special) assert(open.raw == "<?")
-    else assert(open.raw == "<")
+    if (special) {
+        assert(open.raw == "<?")
+    } else {
+        assert(open.raw == "<")
+    }
 
     assert(current.code.isNameStartChar())
 
@@ -471,8 +485,7 @@ private fun <Span : TextSpan> CharInput<Span>.scanTag(tokenStart: CharInput.Mark
 
     while (true) {
         when {
-            current == CharInput.EOB ->
-                return scanText(tokenStart)
+            current == CharInput.EOB -> return scanText(tokenStart)
 
             current == '?' && special -> {
                 val close = readLiteral("?>") ?: return scanText(tokenStart)
@@ -480,7 +493,7 @@ private fun <Span : TextSpan> CharInput<Span>.scanTag(tokenStart: CharInput.Mark
                     Spanned(open, Unit),
                     SpannedWithSpaces(name.value, name.span, nameTail),
                     attrs,
-                    close
+                    close,
                 )
             }
 
@@ -489,7 +502,8 @@ private fun <Span : TextSpan> CharInput<Span>.scanTag(tokenStart: CharInput.Mark
                 return XmlToken.OpeningTag(
                     Spanned(open, Unit),
                     SpannedWithSpaces(name.value, name.span, nameTail),
-                    attrs, close.replace(CloseType.Greater)
+                    attrs,
+                    close.replace(CloseType.Greater),
                 )
             }
 
@@ -498,7 +512,8 @@ private fun <Span : TextSpan> CharInput<Span>.scanTag(tokenStart: CharInput.Mark
                 return XmlToken.OpeningTag(
                     Spanned(open, Unit),
                     SpannedWithSpaces(name.value, name.span, nameTail),
-                    attrs, close.replace(CloseType.SlashGreater)
+                    attrs,
+                    close.replace(CloseType.SlashGreater),
                 )
             }
 
@@ -519,7 +534,9 @@ private fun <Span : TextSpan> CharInput<Span>.readAttributes(): List<XmlAttr<Spa
         if (current.code.isNameStartChar()) {
             val attr = readAttribute() ?: return null
             attrs.add(attr)
-        } else break
+        } else {
+            break
+        }
     }
     return attrs
 }
@@ -536,18 +553,14 @@ private fun <Span : TextSpan> CharInput<Span>.readAttribute(): XmlAttr<Span>? {
     val value = readAttrValue() ?: return null
     val valueTail = readSpaces()
 
-    return XmlAttr(
-        name.withSpaces(nameTail),
-        eq.withSpaces(eqTail),
-        value.withSpaces(valueTail)
-    )
+    return XmlAttr(name.withSpaces(nameTail), eq.withSpaces(eqTail), value.withSpaces(valueTail))
 }
 
 private fun <Span : TextSpan> CharInput<Span>.readAttrValue(): Spanned<Span, XmlAttrValue>? {
     val start = mark()
     val char = current
     when {
-        char == '"'  -> return readQuotedAttrValue(start, '"')?.map { XmlAttrValue.String(it) }
+        char == '"' -> return readQuotedAttrValue(start, '"')?.map { XmlAttrValue.String(it) }
         char == '\'' -> return readQuotedAttrValue(start, '\'')?.map { XmlAttrValue.String(it) }
 
         char == '>' -> return null
@@ -556,9 +569,13 @@ private fun <Span : TextSpan> CharInput<Span>.readAttrValue(): Spanned<Span, Xml
 
         char.code.isNameStartChar() -> {
             val name = readIdentifier() ?: return null
-            if (name.value == "true") return name.replace(XmlAttrValue.Boolean(true))
-            else if (name.value == "false") return name.replace(XmlAttrValue.Boolean(false))
-            else return name.map { XmlAttrValue.String(it) }
+            if (name.value == "true") {
+                return name.replace(XmlAttrValue.Boolean(true))
+            } else if (name.value == "false") {
+                return name.replace(XmlAttrValue.Boolean(false))
+            } else {
+                return name.map { XmlAttrValue.String(it) }
+            }
         }
 
         char.isDigit() -> return readIntegerOrReal()
@@ -566,7 +583,10 @@ private fun <Span : TextSpan> CharInput<Span>.readAttrValue(): Spanned<Span, Xml
     }
 }
 
-private fun <Span> CharInput<Span>.readQuotedAttrValue(start: CharInput.Mark, quote: Char): Spanned<Span, String>? {
+private fun <Span> CharInput<Span>.readQuotedAttrValue(
+    start: CharInput.Mark,
+    quote: Char,
+): Spanned<Span, String>? {
     assert(current == quote)
     advance()
 
@@ -603,6 +623,7 @@ private fun <Span> CharInput<Span>.readQuotedAttrValue(start: CharInput.Mark, qu
 
 class XmlScanner<Span : TextSpan>(val input: CharInput<Span>) {
     var current: XmlToken<Span> = input.nextToken()
+
     fun advance() {
         current = input.nextToken()
     }

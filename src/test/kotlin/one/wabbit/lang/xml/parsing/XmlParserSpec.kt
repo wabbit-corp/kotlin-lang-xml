@@ -1,19 +1,26 @@
 package one.wabbit.lang.xml.parsing
 
+import kotlin.test.Test
+import kotlin.test.assertTrue
 import one.wabbit.lang.xml.XmlElement
 import one.wabbit.parsing.CharInput
 import one.wabbit.parsing.TextAndPosSpan
 import one.wabbit.parsing.TextOnlySpan
-import kotlin.test.Test
-import kotlin.test.assertTrue
 
 class XmlParserSpec {
-    @Test fun test() {
-        val xml = """
+    @Test
+    fun test() {
+        val xml =
+            """
             <f id='join-flag'/> <c color='grey'>{{player}}</c> joined the server for the first time!
-        """.trimIndent()
+            """
+                .trimIndent()
 
-        val result = parseXmlDocument(XmlScanner(CharInput.withTextAndPosSpans(xml)), TextAndPosSpan.spanLike)
+        val result =
+            parseXmlDocument(
+                XmlScanner(CharInput.withTextAndPosSpans(xml)),
+                TextAndPosSpan.spanLike,
+            )
         assertTrue(result.children.size == 4)
         assertTrue(result.children[0] is XmlElement.Tag)
         val f = result.children[0] as XmlElement.Tag
@@ -26,9 +33,11 @@ class XmlParserSpec {
         assertTrue(result.children[3] is XmlElement.Text)
     }
 
-    @Test fun testParsingUnopenedTagsCase1() {
+    @Test
+    fun testParsingUnopenedTagsCase1() {
         val xml = "</a></root>"
-        val result = parseXmlDocument(XmlScanner(CharInput.withTextOnlySpans(xml)), TextOnlySpan.spanLike)
+        val result =
+            parseXmlDocument(XmlScanner(CharInput.withTextOnlySpans(xml)), TextOnlySpan.spanLike)
         assertTrue(result.children.size == 2)
         val a = result.children[0]
         assertTrue(a is XmlElement.UnopenedTag)
@@ -38,9 +47,11 @@ class XmlParserSpec {
         assertTrue(root.token.name.value == "root")
     }
 
-    @Test fun testParsingUnopenedTagsCase3() {
+    @Test
+    fun testParsingUnopenedTagsCase3() {
         val xml = "<root><a>X</b>Y</a></root>"
-        val result = parseXmlDocument(XmlScanner(CharInput.withTextOnlySpans(xml)), TextOnlySpan.spanLike)
+        val result =
+            parseXmlDocument(XmlScanner(CharInput.withTextOnlySpans(xml)), TextOnlySpan.spanLike)
         assertTrue(result.children.size == 1)
         val root = result.children[0]
         assertTrue(root is XmlElement.Tag)
@@ -57,9 +68,11 @@ class XmlParserSpec {
         assertTrue(b.token.name.value == "b")
     }
 
-    @Test fun testParsingUnclosedTagsCase4() {
+    @Test
+    fun testParsingUnclosedTagsCase4() {
         val xml = "<root><a>X<b>Y</a></root>"
-        val result = parseXmlDocument(XmlScanner(CharInput.withTextOnlySpans(xml)), TextOnlySpan.spanLike)
+        val result =
+            parseXmlDocument(XmlScanner(CharInput.withTextOnlySpans(xml)), TextOnlySpan.spanLike)
         assertTrue(result.children.size == 1)
         val root = result.children[0]
         assertTrue(root is XmlElement.Tag)
@@ -76,9 +89,11 @@ class XmlParserSpec {
         assertTrue(b.token.name.value == "b")
     }
 
-    @Test fun testParsingUnclosedTagsCase4_1() {
+    @Test
+    fun testParsingUnclosedTagsCase4_1() {
         val xml = "<root><a><a>X<b>Y</a></a></root>"
-        val result = parseXmlDocument(XmlScanner(CharInput.withTextOnlySpans(xml)), TextOnlySpan.spanLike)
+        val result =
+            parseXmlDocument(XmlScanner(CharInput.withTextOnlySpans(xml)), TextOnlySpan.spanLike)
         assertTrue(result.children.size == 1)
         val root = result.children[0]
         assertTrue(root is XmlElement.Tag)
