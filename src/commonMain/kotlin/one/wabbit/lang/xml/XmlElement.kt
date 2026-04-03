@@ -1,7 +1,5 @@
 package one.wabbit.lang.xml
 
-import java.io.File
-import java.lang.StringBuilder
 import kotlinx.serialization.Serializable
 import one.wabbit.lang.xml.parsing.SpannedWithSpaces
 import one.wabbit.lang.xml.parsing.XmlScanner
@@ -432,10 +430,5 @@ data class XmlDocument<Span>(val children: List<XmlElement<Span>>) {
             return parseXmlDocument(scanner, TextOnlySpan.spanLike)
         }
 
-        fun parseWithTextAndPosSpans(file: File): XmlDocument<TextAndPosSpan> =
-            parseWithTextAndPosSpans(file.readText())
-
-        fun parseWithTextOnlySpans(file: File): XmlDocument<TextOnlySpan> =
-            parseWithTextOnlySpans(file.readText())
     }
 }

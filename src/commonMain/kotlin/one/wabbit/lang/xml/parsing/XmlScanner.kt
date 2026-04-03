@@ -315,7 +315,7 @@ private fun <Span : TextSpan> CharInput<Span>.nextToken(): XmlToken<Span> {
 private fun <Span : TextSpan> CharInput<Span>.scanEntityRef(
     tokenStart: CharInput.Mark
 ): XmlToken<Span> {
-    assert(current == '&')
+    check(current == '&')
     advance()
 
     if (current == '#') {
@@ -358,7 +358,7 @@ private fun <Span : TextSpan> CharInput<Span>.scanText(
 private fun <Span : TextSpan> CharInput<Span>.scanCDATA(
     tokenStart: CharInput.Mark
 ): XmlToken<Span> {
-    assert(current == '[')
+    check(current == '[')
 
     advance()
     if (current != 'C') return scanText(tokenStart)
@@ -411,7 +411,7 @@ private fun <Span : TextSpan> CharInput<Span>.scanCDATA(
 private fun <Span : TextSpan> CharInput<Span>.scanComment(
     tokenStart: CharInput.Mark
 ): XmlToken<Span> {
-    assert(current == '-')
+    check(current == '-')
 
     advance()
     if (current != '-') return scanText(tokenStart)
@@ -447,14 +447,14 @@ private fun <Span : TextSpan> CharInput<Span>.scanEndTag(
     tokenStart: CharInput.Mark
 ): XmlToken<Span> {
     val open = capture(tokenStart)
-    assert(open.raw == "</")
+    check(open.raw == "</")
     val openTail = readSpaces()
 
     val name = readIdentifier() ?: return scanText(tokenStart)
     val nameTail = readSpaces()
 
     val close = readLiteral('>') ?: return scanText(tokenStart)
-    assert(close.span.raw == ">")
+    check(close.span.raw == ">")
 
     return XmlToken.ClosingTag(
         SpannedWithSpaces(Unit, open, openTail),
@@ -471,12 +471,12 @@ private fun <Span : TextSpan> CharInput<Span>.scanTag(
 ): XmlToken<Span> {
     val open = capture(tokenStart)
     if (special) {
-        assert(open.raw == "<?")
+        check(open.raw == "<?")
     } else {
-        assert(open.raw == "<")
+        check(open.raw == "<")
     }
 
-    assert(current.code.isNameStartChar())
+    check(current.code.isNameStartChar())
 
     val name = readIdentifier() ?: return scanText(tokenStart)
     val nameTail = readSpaces()
@@ -519,7 +519,7 @@ private fun <Span : TextSpan> CharInput<Span>.scanTag(
 
             current.code.isNameStartChar() -> {
                 attrs = readAttributes() ?: return scanText(tokenStart)
-                assert(!current.isWhitespace() && !current.code.isNameStartChar())
+                check(!current.isWhitespace() && !current.code.isNameStartChar())
             }
 
             else -> return scanText(tokenStart)
@@ -528,7 +528,7 @@ private fun <Span : TextSpan> CharInput<Span>.scanTag(
 }
 
 private fun <Span : TextSpan> CharInput<Span>.readAttributes(): List<XmlAttr<Span>>? {
-    assert(current.code.isNameStartChar())
+    check(current.code.isNameStartChar())
     val attrs = mutableListOf<XmlAttr<Span>>()
     while (true) {
         if (current.code.isNameStartChar()) {
@@ -547,7 +547,7 @@ private fun <Span : TextSpan> CharInput<Span>.readAttribute(): XmlAttr<Span>? {
 
     val eq = readLiteral('=') ?: return null
 
-    assert(eq.span.raw == "=")
+    check(eq.span.raw == "=")
     val eqTail = readSpaces()
 
     val value = readAttrValue() ?: return null
@@ -587,7 +587,7 @@ private fun <Span> CharInput<Span>.readQuotedAttrValue(
     start: CharInput.Mark,
     quote: Char,
 ): Spanned<Span, String>? {
-    assert(current == quote)
+    check(current == quote)
     advance()
 
     val buffer = StringBuilder()

@@ -1,10 +1,9 @@
 package one.wabbit.lang.xml.parsing
 
-import com.github.difflib.text.DiffRow
-import com.github.difflib.text.DiffRowGenerator
-import java.io.File
-import kotlin.test.Ignore
 import kotlin.test.Test
+import kotlin.test.Ignore
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import one.wabbit.lang.xml.XmlAttrValue
 import one.wabbit.lang.xml.XmlElement
 import one.wabbit.lang.xml.XmlToken
@@ -90,32 +89,7 @@ class XmlScannerSpec {
     }
 
     private fun <A> A.shouldEqual(that: A) {
-        if (this === that) return
-        if (this === null || that === null) {
-            throw AssertionError("$this != $that")
-        }
-        if (this == that) return
-
-        if (this is CharSequence && that is CharSequence) {
-            val generator =
-                DiffRowGenerator.create()
-                    .showInlineDiffs(true)
-                    .inlineDiffByWord(true)
-                    .reportLinesUnchanged(false)
-                    .oldTag { f: Boolean? -> "~" }
-                    .newTag { f: Boolean? -> "**" }
-                    .build()
-            val rows: List<DiffRow> = generator.generateDiffRows(this.split("\n"), that.split("\n"))
-
-            println("|original|new|")
-            println("|--------|---|")
-            for (row in rows) {
-                if (row.oldLine == row.newLine) continue
-                println("|" + row.oldLine + "|" + row.newLine + "|")
-            }
-        }
-
-        throw AssertionError("$this != $that")
+        assertEquals(that, this)
     }
 
     @Test
@@ -375,7 +349,7 @@ class XmlScannerSpec {
         val scanner = XmlScanner(input)
         val document = parseXmlDocument(scanner, TextAndPosSpan.spanLike)
         println(document.findAllInvalidTags())
-        assert(document.findAllInvalidTags().size == 1)
+        assertTrue(document.findAllInvalidTags().size == 1)
     }
 
     @Test
@@ -392,8 +366,8 @@ class XmlScannerSpec {
         val input = CharInput.withTextAndPosSpans(text)
         val scanner = XmlScanner(input)
         val document = parseXmlDocument(scanner, TextAndPosSpan.spanLike)
-        assert(document.children.size == 1)
-        assert(document.children[0] is XmlElement.Tag)
+        assertTrue(document.children.size == 1)
+        assertTrue(document.children[0] is XmlElement.Tag)
     }
 
     @Test
@@ -410,8 +384,8 @@ class XmlScannerSpec {
         val input = CharInput.withTextAndPosSpans(text)
         val scanner = XmlScanner(input)
         val document = parseXmlDocument(scanner, TextAndPosSpan.spanLike)
-        assert(document.children.size == 1)
-        assert(document.children[0] is XmlElement.Tag)
+        assertTrue(document.children.size == 1)
+        assertTrue(document.children[0] is XmlElement.Tag)
     }
 
     @Test
@@ -425,9 +399,9 @@ Otherwise, multiply by 1.21)]]>
         val input = CharInput.withTextAndPosSpans(text)
         val scanner = XmlScanner(input)
         val document = parseXmlDocument(scanner, TextAndPosSpan.spanLike)
-        assert(document.children.size == 1)
+        assertTrue(document.children.size == 1)
         val element = document.children[0]
-        assert(element is XmlElement.CDATA)
+        assertTrue(element is XmlElement.CDATA)
     }
 
     @Test
@@ -440,8 +414,8 @@ Otherwise, multiply by 1.21)]]>
         val input = CharInput.withTextAndPosSpans(text)
         val scanner = XmlScanner(input)
         val document = parseXmlDocument(scanner, TextAndPosSpan.spanLike)
-        assert(document.children.size == 1)
-        assert(document.children[0] is XmlElement.PI)
+        assertTrue(document.children.size == 1)
+        assertTrue(document.children[0] is XmlElement.PI)
     }
 
     @Test
@@ -454,8 +428,8 @@ Otherwise, multiply by 1.21)]]>
         val input = CharInput.withTextAndPosSpans(text)
         val scanner = XmlScanner(input)
         val document = parseXmlDocument(scanner, TextAndPosSpan.spanLike)
-        assert(document.children.size == 1)
-        assert(document.children[0] is XmlElement.PI)
+        assertTrue(document.children.size == 1)
+        assertTrue(document.children[0] is XmlElement.PI)
     }
 
     @Test
@@ -474,16 +448,16 @@ Otherwise, multiply by 1.21)]]>
         val input = CharInput.withTextAndPosSpans(text)
         val scanner = XmlScanner(input)
         val document = parseXmlDocument(scanner, TextAndPosSpan.spanLike)
-        assert(document.children.size == 1)
+        assertTrue(document.children.size == 1)
         val element = document.children[0]
-        assert(element is XmlElement.CDATA)
+        assertTrue(element is XmlElement.CDATA)
     }
 
     @Ignore
     @Test
-    fun `XML1_1 tag names #1`() {
-        assert('_'.code.isNameStartChar())
-        assert("🌱"[0].code.isNameChar())
+    fun `XML1_1 tag names 1`() {
+        assertTrue('_'.code.isNameStartChar())
+        assertTrue("🌱"[0].code.isNameChar())
 
         val text =
             """
@@ -494,13 +468,13 @@ Otherwise, multiply by 1.21)]]>
         val scanner = XmlScanner(input)
         val document = parseXmlDocument(scanner, TextAndPosSpan.spanLike)
         println(document)
-        assert(document.children.size == 1)
-        assert(document.children[0] is XmlElement.Tag)
+        assertTrue(document.children.size == 1)
+        assertTrue(document.children[0] is XmlElement.Tag)
     }
 
     @Ignore
     @Test
-    fun `XML1_1 tag names #2`() {
+    fun `XML1_1 tag names 2`() {
         val text =
             """
             <൫൬൭>Elements can have numeric names in scripts other than Latin.</൫൬൭>
@@ -509,8 +483,8 @@ Otherwise, multiply by 1.21)]]>
         val input = CharInput.withTextAndPosSpans(text)
         val scanner = XmlScanner(input)
         val document = parseXmlDocument(scanner, TextAndPosSpan.spanLike)
-        assert(document.children.size == 1)
-        assert(document.children[0] is XmlElement.Tag)
+        assertTrue(document.children.size == 1)
+        assertTrue(document.children[0] is XmlElement.Tag)
     }
 
     @Test
@@ -523,13 +497,13 @@ Otherwise, multiply by 1.21)]]>
         val input = CharInput.withTextAndPosSpans(text)
         val scanner = XmlScanner(input)
         val document = parseXmlDocument(scanner, TextAndPosSpan.spanLike)
-        assert(document.children.size == 5)
+        assertEquals(5, document.children.size)
         var newText = ""
         for (t in document.children) {
             t as XmlElement.EntityRef
             newText += t.token.defaultResolvedEntity
         }
-        assert(newText == "&<>\"'")
+        assertEquals("&<>\"'", newText)
     }
 
     @Test
@@ -547,55 +521,4 @@ Otherwise, multiply by 1.21)]]>
         document.children.forEach { print(it) }
     }
 
-    fun findAllXMLs(path: File): List<File> {
-        val result = mutableListOf<File>()
-        for (fn in path.listFiles()!!) {
-            if (fn.isDirectory) {
-                result.addAll(findAllXMLs(fn))
-            } else if (
-                fn.extension == "xml" ||
-                    fn.extension == "xsd" ||
-                    fn.extension == "xsl" ||
-                    fn.extension == "xslt"
-            ) {
-                result.add(fn)
-            }
-        }
-        return result
-    }
-
-    @Ignore
-    @Test
-    fun `test files`() {
-        val targetDirs = listOf("D:\\ws\\datatron-new\\datatron\\data-xml-parsing")
-
-        val files = targetDirs.flatMap { findAllXMLs(File(it)) }
-
-        for (fn in files) {
-            val text = fn.readText()
-            val input = CharInput.withTextAndPosSpans(text)
-            val scanner = XmlScanner(input)
-            val document = parseXmlDocument(scanner, TextAndPosSpan.spanLike)
-
-            document.rawXML(TextAndPosSpan.spanLike).shouldEqual(text)
-
-            val textFragments = document.findAllTextFragments()
-            val badFragments =
-                textFragments.filter {
-                    it.token.text.value.count { it == '>' || it == '<' || it == '&' } > 0
-                }
-
-            val invalidTagCount = document.findAllInvalidTags().size
-            val badFragmentCount = badFragments.size
-
-            if (invalidTagCount == 0) continue
-
-            println("File: ${fn.absolutePath}")
-            println("  Invalid tags: $invalidTagCount")
-            println("  Bad Text fragments: $badFragmentCount")
-            for (f in badFragments) {
-                println("    ${f.token.text.span.raw}")
-            }
-        }
-    }
 }
