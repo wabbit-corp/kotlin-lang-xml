@@ -10,5 +10,6 @@ Add repo-specific instructions above or below the managed facts block. Keep manu
 - Canonical repo target: `kotlin-lang-xml`. Useful entrypoints: `dev project show kotlin-lang-xml`, `dev build kotlin-lang-xml`, `dev check kotlin-lang-xml`.
 - Setup-managed files are regenerated with `dev setup kotlin-lang-xml`; avoid hand-editing stamped generated files.
 - Sanctioned override files in this repo: `build.extra.gradle.kts`, `settings.local.gradle.kts`.
+- Review `kotlin-conventions.md` before editing Kotlin code in this repo.
 - Configured project types: `kotlin/kmp`. Docs: `dokka`.
 <!-- END app-wabbit-dev managed facts -->
